@@ -1,5 +1,5 @@
 // ========================================================================
-const MAX_LEAVE_DAYS = 20;
+const MAX_LEAVE_DAYS = 21;
 const maxLeaveHours = MAX_LEAVE_DAYS * 8;
 
 const totalLeaves = {};
