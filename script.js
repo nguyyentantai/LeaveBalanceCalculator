@@ -120,6 +120,7 @@ durations.forEach((duration, idx) => {
 
 Object.keys(totalLeaves).forEach((year) => {
   const leaveDays = Math.floor(totalLeaves[year]["ANNUAL_LEAVE_DAYS"] / 8);
+  const leaveHours = totalLeaves[year]["ANNUAL_LEAVE_DAYS"] % 8;
 
   const availableDays = ANNUAL_LEAVE_DAYS - leaveDays;
 
@@ -131,7 +132,7 @@ Object.keys(totalLeaves).forEach((year) => {
 
   console.log(
     `Year: ${year}\n
-    - Booked Annual Leave: ${leaveDays}\n
+    - Booked Annual Leave: ${leaveDays} days, ${leaveHours} hours\n
     - Available Annual Leave: ${availableDays} days, ${availableHours} hours\n
     - Available Leisure days: ${availableLeisureDays}`
   );
