@@ -1,140 +1,136 @@
-// ========================================================================
+// Define the leave policy
+const totalLeaveDays = 20;
+const hoursPerDay = 8;
+const totalLeaveHours = totalLeaveDays * hoursPerDay;
 
-// LEAVE CATEGORIES
+// Initialize an object to store leave hours by year
+const leaveByYear = {};
+const leisureDayByYear = {};
+const carryOverByYear = {};
+const possibleCarryOverYears = {};
 
-// Annual: 20
-const ANNUAL_LEAVE_DAYS = 20;
+// Function to check if the leave is possible to carry over
+function isCarryOverPossible(dateString) {
+    const checkDate = new Date(dateString);
+    const currentDate = new Date();
 
-// Parents or children: 3
-// Grandparents or natural siblings: 2
-// Relatives, cousins, aunts or uncles: 1
-const BEREAVEMENT_LEAVE_DAYS = 6;
+    // Check if the date is before 31st March of the current year and the year is from 2025
+    return (
+        checkDate < new Date(checkDate.getFullYear(), 2, 31) &&
+        checkDate.getFullYear() >= 2025
+    );
+}
 
-// Leisure day: 1
-const LEISURE_RULE_DAYS = 1;
+// Function to format hours into days and hours
+function formatDaysAndHours(hours) {
+    const days = Math.floor(hours / hoursPerDay);
+    const remainingHours = hours % hoursPerDay;
+    return remainingHours > 0
+        ? `${days} days ${remainingHours} hours`
+        : `${days} days`;
+}
 
-// Employee: 3
-// Children: 1
-const MARRIGAGE_LEAVE_DAYS = 3;
+(function(ns, fetch) {
+    if (typeof fetch !== 'function') return;
 
-// Leave before and after childbirth: 6*30
-// Twins or more: [6 + (n - 1)]*30
-// Works before the expiry: at least 4*30
-const MATERNITY_LEAVE_DAYS = 6 * 30;
+    ns.fetch = function() {
+        var out = fetch.apply(this, arguments);
 
-// Natural birth: 5
-// Surgical birth: 7
-// Natural twin: 10
-// Natural 3 or more: 10 + (n-2)*3 ≤ 14
-// Surgical twins or more: 14
-const PATERNITY_LEAVE_DAYS = 14;
+        // side-effect
+        out.then(async (response) => {
+            const url = response.url;
+            const regex = /\/api\/v3\/organisations\/\d+\/members\/\d+\/leave_requests/;
 
-// Sick Leave is covered by the Social Insurance Fund
-// n < 15 yrs: 30
-// 15 ≤ n < 30 yrs: 40
-// n ≥ 30: 60
-const SICK_LEAVE_DAYS = 30;
+            if (url && regex.test(url)) {
+                const clonedResponse = response.clone();
+                const jsonResponse = await clonedResponse.json();
 
-// Exams, assignments or attend classes: 2
-const STUDY_LEAVE_DAYS = 2;
+                // Calculate the total booked leave hours for each year
+                jsonResponse.data.items.forEach((item) => {
+                    const year = new Date(
+                        item.start_date.split("/").reverse().join("-")
+                    ).getFullYear();
+                
+                    if (!leaveByYear[year]) {
+                        leaveByYear[year] = 0;
+                        leisureDayByYear[year] = false;
+                        carryOverByYear[year] = 0;
+                        possibleCarryOverYears[year] = 0;
+                    }
+                
+                    if (
+                        item.leave_category_name === "Annual Leave (VN)" ||
+                        item.leave_category_name === "Annual Leave"
+                    ) {
+                        leaveByYear[year] += item.total_units;
+                
+                        // Loop through the leave_hours to check if the leave is possible to carry over
+                        item.leave_hours.forEach((leaveHour) => {
+                            if (isCarryOverPossible(leaveHour.date)) {
+                                possibleCarryOverYears[year] += parseInt(leaveHour.hours, 10);
+                            }
+                        });
+                
+                        return;
+                    }
+                
+                    if (
+                        item.leave_category_name === "Leisure Rules Day" ||
+                        item.leave_category_name === "Leisure Rules Day (VN)"
+                    ) {
+                        leisureDayByYear[year] = true;
+                    }
+                });
 
-// Time in lieu
-const TIME_IN_LIEU_DAYS = 365;
+                // Calculate the available leave hours for each year
+                const availableLeaveByYear = {};
+                for (const year in leaveByYear) {
+                    const previousYear = parseInt(year) - 1;
+                    const carryOverHours =
+                        previousYear >= 2024 ? carryOverByYear[previousYear] : 0;
+                    availableLeaveByYear[year] = totalLeaveHours - leaveByYear[year];
+                    carryOverByYear[year] =
+                        year >= 2024 && availableLeaveByYear[year] > 0
+                        ? availableLeaveByYear[year]
+                        : 0;
+                }
 
-// Unpaid leave
-const UNPAID_LEAVE_DAYS = 365;
+                // Print the results
+                for (const year in leaveByYear) {
+                    const bookedHours = leaveByYear[year];
+                    const leisureDayBooked = leisureDayByYear[year];
+                    const carryOverHours = carryOverByYear[year - 1] ?? 0;
+                    const possibleCarryOverHours = possibleCarryOverYears[year];
+                
+                    // nonCarryOverHours will be the excess hours that are not carried over
+                    const nonCarryOverHours = bookedHours - possibleCarryOverHours;
+                
+                    // availableHours will be the total leave hours minus the non carry over hours
+                    const availableHours = totalLeaveHours - nonCarryOverHours;
+                
+                    // get the available carry over hours by subtracting the possible carry over hours from the total carry over hours
+                    const availableCarryOverHours = carryOverHours - possibleCarryOverHours;
+                
+                    console.log(`Year ${year}:`);
+                    console.log(`- Booked Leisure day: ${leisureDayBooked}`);
+                    console.log(`- Booked Annual leaves: ${formatDaysAndHours(bookedHours)}`);
+                    console.log(
+                    `- Available Annual leaves: ${formatDaysAndHours(availableHours)}`
+                    );
+                
+                    if (year > 2024) {
+                        console.log(
+                            `- Available Carried Over Annual leaves: ${formatDaysAndHours(
+                                availableCarryOverHours
+                            )}`
+                        );
+                    }
+                }
+            }
+        });
 
-// ========================================================================
-
-// MAPPING
-const STATIC_MAP = {
-  ANNUAL_LEAVE_DAYS: "Annual Leave",
-  BEREAVEMENT_LEAVE_DAYS: "Bereavement Leave",
-  LEISURE_RULE_DAYS: "Leisure Rules Day",
-  MARRIGAGE_LEAVE_DAYS: "Marriage Leave",
-  MATERNITY_LEAVE_DAYS: "Paid Maternity",
-  PATERNITY_LEAVE_DAYS: "Paid Paternity",
-  SICK_LEAVE_DAYS: "Sick Leave",
-  STUDY_LEAVE_DAYS: "Study Leave",
-  TIME_IN_LIEU_DAYS: "Time In Lieu",
-  UNPAID_LEAVE_DAYS: "Unpaid Leave",
-};
-
-// ========================================================================
-
-const maxLeaveHoursPerDay = ANNUAL_LEAVE_DAYS * 8;
-
-const totalLeaves = {};
-
-// Count additional based on years of service:
-const getExtraYearsOfService = (years) =>
-  !isNaN(years) ? Math.floor(years / 5) : 0;
-
-// Get key by title
-const getKeyByTitle = (title) => {
-  return (
-    Object.entries(STATIC_MAP).find(([key, value]) => {
-      const normalizedTitle = title.toString().toLowerCase();
-      const normalizedValue = value.toString().toLowerCase();
-      return normalizedTitle.includes(normalizedValue);
-    })[0] ?? null
-  );
-};
-
-// ========================================================================
-
-const durations = document.querySelectorAll("td:nth-child(5)");
-
-durations.forEach((duration, idx) => {
-  if (duration.innerText.includes("hours")) {
-    const title = document.querySelectorAll("td:nth-child(4)")[idx].innerText;
-
-    const startDate =
-      document.querySelectorAll("td:nth-child(2)")[idx].innerText;
-
-    const year = startDate.split("/")[2];
-
-    const key = getKeyByTitle(title);
-
-    console.log(title, startDate);
-
-    if (!totalLeaves[year]) {
-      const newYear = {
-        [year]: { [key]: Number(duration.innerText.split(" ")[0]) },
-      };
-
-      Object.assign(totalLeaves, newYear);
-
-      return;
+        return out;
     }
 
-    if (!totalLeaves[year][key]) {
-      totalLeaves[year][key] = Number(duration.innerText.split(" ")[0]);
-    } else {
-      totalLeaves[year][key] += Number(duration.innerText.split(" ")[0]);
-    }
-  }
-});
-
-// ========================================================================
-
-Object.keys(totalLeaves).forEach((year) => {
-  const leaveDays = Math.floor(totalLeaves[year]["ANNUAL_LEAVE_DAYS"] / 8);
-  const leaveHours = totalLeaves[year]["ANNUAL_LEAVE_DAYS"] % 8;
-
-  const availableDays = ANNUAL_LEAVE_DAYS - leaveDays;
-
-  const availableHours =
-    (maxLeaveHoursPerDay - totalLeaves[year]["ANNUAL_LEAVE_DAYS"]) % 8;
-
-  // availableLeisureDays: check if there are any leisure days booked
-  const availableLeisureDays = totalLeaves[year]["LEISURE_RULE_DAYS"] ? 0 : 1;
-
-  console.log(
-    `Year: ${year}\n
-    - Booked Annual Leave: ${leaveDays} days, ${leaveHours} hours\n
-    - Available Annual Leave: ${availableDays} days, ${availableHours} hours\n
-    - Available Leisure days: ${availableLeisureDays}`
-  );
-});
-// ========================================================================
+    return 'Please change the item per page to 100 to see the better results';
+}(window, window.fetch));
