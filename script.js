@@ -3,6 +3,7 @@ const totalLeaveDays = 20;
 const hoursPerDay = 8;
 const totalLeaveHours = totalLeaveDays * hoursPerDay;
 const monthlyLeaveHours = totalLeaveHours / 12;
+const membershipPath = ["api_calls", "CURRENT_MEMBERSHIP", "data"];
 
 // Year of service
 let dateOfService = 0;
@@ -201,6 +202,99 @@ const calculateLeaveSummary = (items, serviceDateInput) => {
   });
 };
 
+const findStoreInFiber = (fiber) => {
+  if (!fiber) return null;
+  if (fiber.memoizedProps?.store) {
+    return fiber.memoizedProps.store;
+  }
+
+  return findStoreInFiber(fiber.child) || findStoreInFiber(fiber.sibling);
+};
+
+const getReduxStoreFromHook = () => {
+  if (typeof window === "undefined") return null;
+
+  const hook = window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+  if (!hook) return null;
+
+  const renderers = hook.renderers || hook._renderers;
+  if (!renderers) return null;
+
+  for (const [rendererId] of renderers.entries()) {
+    const fiberRoots =
+      (typeof hook.getFiberRoots === "function" &&
+        hook.getFiberRoots(rendererId)) ||
+      hook._fiberRoots?.get(rendererId);
+
+    if (!fiberRoots) continue;
+
+    for (const root of fiberRoots) {
+      const store = findStoreInFiber(root?.current);
+      if (store) return store;
+    }
+  }
+
+  return null;
+};
+
+const formatIsoToServiceDate = (isoString) => {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return null;
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const detectDateOfServiceFromStore = () => {
+  const store = getReduxStoreFromHook();
+  if (!store || typeof store.getState !== "function") {
+    return null;
+  }
+
+  let state = store.getState();
+  for (const key of membershipPath) {
+    if (state && Object.prototype.hasOwnProperty.call(state, key)) {
+      state = state[key];
+    } else {
+      state = null;
+      break;
+    }
+  }
+
+  if (state?.created_at) {
+    return formatIsoToServiceDate(state.created_at);
+  }
+
+  return null;
+};
+
+const ensureDateOfService = () => {
+  if (dateOfService) return dateOfService;
+
+  const detectedDate = detectDateOfServiceFromStore();
+  if (detectedDate) {
+    dateOfService = detectedDate;
+    console.log(
+      `Detected start date of service from CURRENT_MEMBERSHIP: ${dateOfService}`
+    );
+    return dateOfService;
+  }
+
+  if (typeof prompt === "function") {
+    dateOfService = prompt("Enter the start date of service (dd/mm/yyyy):");
+    console.log(`Date of service: ${dateOfService}`);
+  } else {
+    console.warn(
+      "Unable to detect service date automatically and prompt is unavailable."
+    );
+    dateOfService = "";
+  }
+
+  return dateOfService;
+};
+
 const initLeaveBalanceCalculator = (ns) => {
   if (!ns || typeof ns.fetch !== "function") return;
 
@@ -274,12 +368,7 @@ const initLeaveBalanceCalculator = (ns) => {
     return out;
   };
 
-  if (typeof prompt === "function") {
-    dateOfService = prompt("Enter the start date of service (dd/mm/yyyy):");
-    console.log(`Date of service: ${dateOfService}`);
-  } else {
-    dateOfService = "";
-  }
+  ensureDateOfService();
 
   return "Please change the item per page to see the results, better to set it to 100.Thank you!";
 };
