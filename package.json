@@ -1,0 +1,27 @@
+{
+  "name": "leavebalancecalculator",
+  "version": "1.0.0",
+  "description": "## Overview LeaveBalanceCalculator is a JavaScript tool designed to help users track and calculate their leave balances based on a predefined leave policy. The tool monitors annual leave usage, handles carry-over of unused leave hours, accounts for additional leave based on years of service, and differentiates between regular leave and leisure days.",
+  "main": "script.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "test": "node tests/sample.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nguyyentantai/LeaveBalanceCalculator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nguyyentantai/LeaveBalanceCalculator/issues"
+  },
+  "homepage": "https://github.com/nguyyentantai/LeaveBalanceCalculator#readme",
+  "devDependencies": {
+    "esbuild": "^0.17.19"
+  }
+}
