@@ -68,6 +68,12 @@ javascript:(()=>{const totalLeaveDays=20,hoursPerDay=8,totalLeaveHours=160,month
    - Available annual leaves (in days and hours)
    - Available carried-over annual leaves (for years after 2024)
 
+
+
+https://github.com/user-attachments/assets/12cdb406-b0db-46a8-b7e0-7039979a4844
+
+
+
 ## Understanding the Results
 
 The console output provides a year-by-year breakdown of your leave balance:
