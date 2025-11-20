@@ -123,7 +123,7 @@ const calculateLeaveSummary = (items, serviceDateInput) => {
       item.start_date.split("/").reverse().join("-")
     ).getFullYear();
 
-    if (!leaveByYear[year]) {
+    if (leaveByYear[year] !== null) {
       leaveByYear[year] = 0;
       leisureDayByYear[year] = false;
       carryOverByYear[year] = 0;
