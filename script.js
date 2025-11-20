@@ -75,11 +75,16 @@ const getBaseLeaveHours = (dateOfService, currentYear) => {
 // Function to check if the leave is possible to carry over
 const isCarryOverPossible = (dateString) => {
   const checkDate = new Date(dateString);
-  // Check if the date is before 31st March of the current year and the year is from 2024
-  return (
-    checkDate < new Date(checkDate.getFullYear(), 2, 31) &&
-    checkDate.getFullYear() >= 2024
-  );
+  if (Number.isNaN(checkDate.getTime())) {
+    return false;
+  }
+
+  const year = checkDate.getUTCFullYear();
+  const month = checkDate.getUTCMonth();
+  const day = checkDate.getUTCDate();
+
+  // Eligible when the leave date is on/before 31 March (inclusive) for years from 2024
+  return year >= 2024 && (month < 2 || (month === 2 && day <= 31));
 };
 
 // Function to format hours into days and hours
